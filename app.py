@@ -40,35 +40,35 @@ def fetch_metabase_data(query_id):
         response.raise_for_status()
         data = response.json()
         if not data:
-            st.warning(f"⚠️ Query ID {query_id} returned no data.")
+            st.warning("⚠️ Query returned no data.")
             return None
         return pd.DataFrame(data)  # Convert to DataFrame
     except requests.exceptions.RequestException as e:
-        st.error(f"❌ Error fetching data for Query {query_id}: {e}")
+        st.error(f"❌ Error fetching data: {e}")
         return None
 
 # Streamlit UI
 st.title("📊 Metabase Data Viewer & Visualization")
 st.sidebar.header("🔍 Query Settings")
 
-# Query IDs
-query_id_1 = 3012  # Existing Query
-query_id_2 = 3023  # New Query for Trip Details
+# User inputs Query IDs
+query_id_1 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3012, step=1)
+query_id_2 = st.sidebar.number_input("Enter Metabase Query ID (Second Dataset)", min_value=1, value=3023, step=1)
 
 # Fetch data
 df_1 = fetch_metabase_data(query_id_1)
 df_2 = fetch_metabase_data(query_id_2)
 
-## ------------------- QUERY 1: EXISTING DATA -------------------
+## ------------------- QUERY 1: VEHICLE SCHEDULE DATA -------------------
 if df_1 is not None:
-    st.write(f"### 🔹 Data from Query ID: {query_id_1}")
+    st.write(f"### 🔹 Retrieved Data (Query ID: {query_id_1})")
     st.dataframe(df_1)
 
-    # Convert columns to appropriate data types
+    # Convert columns to datetime
     df_1['Scheduled At Time'] = pd.to_datetime(df_1['Scheduled At Time'], errors='coerce', format='%I:%M %p')
     df_1['Started At Time'] = pd.to_datetime(df_1['Started At Time'], errors='coerce', format='%I:%M %p')
 
-    # Add new columns for analysis
+    # Add analysis columns
     df_1['Before 09:00 AM'] = df_1['Scheduled At Time'].dt.hour < 9
     df_1['Not Started'] = df_1['Started At Time'].isna()
 
@@ -145,6 +145,25 @@ if df_2 is not None:
         text_auto=True
     )
     st.plotly_chart(fig_driver_bar)
+
+    # SPOC-wise Trip Count
+    st.subheader("👤 SPOC-wise Trip Count")
+    if 'Spoc' in df_2.columns:  # Check if Spoc column exists
+        df_spoc_trips = df_2.groupby('Spoc').size().reset_index(name='Total Trips')
+        st.dataframe(df_spoc_trips)
+
+        # Bar Chart: SPOC-wise Trip Count
+        fig_spoc_bar = px.bar(
+            df_spoc_trips, 
+            x='Spoc', 
+            y='Total Trips', 
+            title="Trips per SPOC", 
+            color='Total Trips', 
+            text_auto=True
+        )
+        st.plotly_chart(fig_spoc_bar)
+    else:
+        st.warning("⚠️ No 'Spoc' column found in the dataset.")
 
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_2}.")
