@@ -48,7 +48,7 @@ def fetch_metabase_data(query_id):
         return None
 
 # Streamlit UI
-st.title("📊 Metabase Data Viewer & Visualization")
+st.title("📊 Metabase Data Viewer & Driver Analysis")
 st.sidebar.header("🔍 Query Settings")
 
 # User inputs Query IDs
@@ -61,11 +61,11 @@ df_2 = fetch_metabase_data(query_id_2)
 
 ## ------------------- QUERY 1: VEHICLE SCHEDULE DATA -------------------
 if df_1 is not None:
-    st.write(f"### 🔹 Retrieved Data (Query ID: {query_id_1})")
+    st.write(f"### 🔹 App Not Deployed - Real Time Data")
     st.dataframe(df_1)
 
     # Bar Chart: Customer-wise Total Vehicle Count
-    st.subheader("📊 Customer-wise Total Vehicle Count Graph")
+    st.subheader("📊 Customer-wise count of \"Not App Deployed\" for today")
     df_1['Total Vehicles'] = pd.to_numeric(df_1['Total Vehicles'], errors='coerce')
     df_customer_vehicles = df_1.groupby('Customer')['Total Vehicles'].sum().reset_index()
     
@@ -83,7 +83,7 @@ else:
 
 ## ------------------- QUERY 2: TRIP DATA -------------------
 if df_2 is not None:
-    st.write(f"### 🚚 Trip Data from Query ID: {query_id_2}")
+    st.write(f"### 🚚 Current month's raw data for \"App Not Deployed\"")
     st.dataframe(df_2)
 
     # Bar Chart: Number of Trips per Hub
@@ -100,7 +100,7 @@ if df_2 is not None:
     st.plotly_chart(fig_hub_bar)
 
     # Count Unique Drivers and Their Trip Counts
-    st.subheader("🚛 Driver-wise Trip Count")
+    st.subheader("🚛 Driver-wise Trip Count for \"App Not Deployed\" in the Current Month")
     df_driver_trips = df_2.groupby('Driver').size().reset_index(name='Total Trips')
     st.dataframe(df_driver_trips)
 
@@ -116,8 +116,8 @@ if df_2 is not None:
     st.plotly_chart(fig_driver_bar)
 
     # SPOC-wise Trip Count
-    st.subheader("👤 SPOC-wise Trip Count")
-    if 'Spoc' in df_2.columns:  # Check if Spoc column exists
+    st.subheader("👤 SPOC-wise Trip Count \"App Not Deployed\" in the Current Month")
+    if 'Spoc' in df_2.columns:
         df_spoc_trips = df_2.groupby('Spoc').size().reset_index(name='Total Trips')
         st.dataframe(df_spoc_trips)
 
@@ -135,3 +135,29 @@ if df_2 is not None:
         st.warning("⚠️ No 'Spoc' column found in the dataset.")
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_2}.")
+
+## ------------------- DRIVER MATCHING LOGIC -------------------
+if df_1 is not None and df_2 is not None:
+    if 'Driver' in df_1.columns and 'Driver' in df_2.columns:
+        st.success("✅ 'Driver' column exists in both datasets.")
+        
+        if 'Scheduled At' in df_2.columns:
+            st.success("✅ 'Scheduled At' column exists in Query 3023.")
+            df_2['Scheduled At'] = pd.to_datetime(df_2['Scheduled At'], errors='coerce')
+            yesterday = (pd.Timestamp.today() - pd.Timedelta(days=1)).date()
+            df_2_yesterday = df_2[df_2['Scheduled At'].dt.date == yesterday]
+            
+            drivers_3021 = set(df_1['Driver'].dropna().unique())
+            drivers_3023_yesterday = set(df_2_yesterday['Driver'].dropna().unique())
+            
+            common_drivers = sorted(drivers_3021.intersection(drivers_3023_yesterday))
+            
+            if common_drivers:
+                st.subheader("🚚 Drivers who have not deployed the app yesterday and today")
+                st.write(common_drivers)
+            else:
+                st.warning("⚠️ No matching drivers found for yesterday's data.")
+        else:
+            st.warning("⚠️ 'Scheduled At' column not found in Query 3023.")
+    else:
+        st.warning("⚠️ 'Driver' column not found in one of the datasets.")
