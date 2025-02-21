@@ -61,7 +61,7 @@ df_2 = fetch_metabase_data(query_id_2)
 
 ## ------------------- QUERY 1: VEHICLE SCHEDULE DATA -------------------
 if df_1 is not None:
-    st.write(f"### 🔹 App Not Deployed - Real Time Data")
+    st.write("### 🔹 App Not Deployed - Real Time Data")
     st.dataframe(df_1)
 
     # Bar Chart: Customer-wise Total Vehicle Count
@@ -83,7 +83,7 @@ else:
 
 ## ------------------- QUERY 2: TRIP DATA -------------------
 if df_2 is not None:
-    st.write(f"### 🚚 Current month's raw data for \"App Not Deployed\"")
+    st.write("### 🚚 Current month's raw data for \"App Not Deployed\"")
     st.dataframe(df_2)
 
     # Bar Chart: Number of Trips per Hub
@@ -136,7 +136,7 @@ if df_2 is not None:
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_2}.")
 
-## ------------------- DRIVER MATCHING LOGIC -------------------
+## ------------------- DRIVERS WHO DID NOT DEPLOY THE APP (YESTERDAY & TODAY) -------------------
 if df_1 is not None and df_2 is not None:
     if 'Driver' in df_1.columns and 'Driver' in df_2.columns:
         st.success("✅ 'Driver' column exists in both datasets.")
@@ -161,3 +161,80 @@ if df_1 is not None and df_2 is not None:
             st.warning("⚠️ 'Scheduled At' column not found in Query 3023.")
     else:
         st.warning("⚠️ 'Driver' column not found in one of the datasets.")
+if df_2 is not None:
+    if {'Customer', 'Driver', 'Spoc', 'Scheduled At'}.issubset(df_2.columns):
+        st.subheader("📅 Drivers who have not deployed the app in the last 7 days")
+        
+        # Define last 7 days
+        last_7_days = [(pd.Timestamp.today() - pd.Timedelta(days=i)).date() for i in range(6, -1, -1)]
+        
+        # Ensure 'Scheduled At' column is in datetime format
+        df_2['Scheduled At'] = pd.to_datetime(df_2['Scheduled At'], errors='coerce')
+
+        # Convert 'Scheduled At' to date before filtering
+        df_filtered = df_2[df_2['Scheduled At'].dt.date.isin(last_7_days)]
+        
+        # Create pivot table for last 7 days
+        df_pivot = df_filtered.pivot_table(
+            index=['Customer', 'Driver', 'Spoc'], 
+            columns='Scheduled At', 
+            aggfunc='size', 
+            fill_value=0
+        ).reset_index()
+        
+        # Rename columns
+        df_pivot.columns.name = None
+        df_pivot.rename(columns=lambda x: str(x) if isinstance(x, pd.Timestamp) else x, inplace=True)
+
+        # Add Grand Total row
+        total_row = df_pivot.select_dtypes(include=['number']).sum()
+        total_row['Customer'] = 'Grand Total'
+        total_row['Driver'] = ''
+        total_row['Spoc'] = ''
+        df_pivot = pd.concat([df_pivot, pd.DataFrame([total_row])], ignore_index=True)
+
+        # Display Pivot Table
+        st.dataframe(df_pivot)
+
+        # Melt the pivot table to long format for visualization
+        df_melted = df_pivot.melt(id_vars=['Customer', 'Driver', 'Spoc'], var_name='Date', value_name='Count')
+
+        # Remove Grand Total row from visualization
+        df_melted = df_melted[df_melted['Customer'] != 'Grand Total']
+
+        fig = px.bar(
+            df_melted, 
+            x='Date',
+            y='Count',
+            color='Driver',
+            barmode='group',
+            title="📊 Driver Schedule Count Over the Last 7 Days",
+            labels={'Date': 'Scheduled Date', 'Count': 'Number of Assignments'},
+            height=500
+        )
+
+        # Display the chart in Streamlit
+        st.plotly_chart(fig, use_container_width=True)
+
+
+        # ------------------- CURRENT DATE DATA -------------------
+        st.subheader("📆 Drivers who have not deployed the app today after trip completion")
+
+        # Filter data for today
+        today_date = pd.Timestamp.today().date()
+        df_today = df_2[df_2['Scheduled At'].dt.date == today_date]
+
+        # Count occurrences of (Customer, Driver, Spoc)
+        df_today_summary = df_today.groupby(['Customer', 'Driver', 'Spoc']).size().reset_index(name='Count')
+
+        # Add Grand Total row
+        total_count = df_today_summary['Count'].sum()
+        grand_total_row = pd.DataFrame([{'Customer': 'Grand Total', 'Driver': '', 'Spoc': '', 'Count': total_count}])
+        # Append Grand Total to the dataframe
+        df_today_summary = pd.concat([df_today_summary, grand_total_row], ignore_index=True)
+        # Display Today's Data
+        st.dataframe(df_today_summary)
+
+    else:
+        st.warning("⚠️ Required columns ('Customer', 'Driver', 'Spoc', 'Scheduled At') not found in dataset.")
+
