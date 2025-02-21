@@ -52,7 +52,7 @@ st.title("📊 Metabase Data Viewer & Visualization")
 st.sidebar.header("🔍 Query Settings")
 
 # User inputs Query IDs
-query_id_1 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3012, step=1)
+query_id_1 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3021, step=1)
 query_id_2 = st.sidebar.number_input("Enter Metabase Query ID (Second Dataset)", min_value=1, value=3023, step=1)
 
 # Fetch data
@@ -64,41 +64,11 @@ if df_1 is not None:
     st.write(f"### 🔹 Retrieved Data (Query ID: {query_id_1})")
     st.dataframe(df_1)
 
-    # Convert columns to datetime
-    df_1['Scheduled At Time'] = pd.to_datetime(df_1['Scheduled At Time'], errors='coerce', format='%I:%M %p')
-    df_1['Started At Time'] = pd.to_datetime(df_1['Started At Time'], errors='coerce', format='%I:%M %p')
-
-    # Add analysis columns
-    df_1['Before 09:00 AM'] = df_1['Scheduled At Time'].dt.hour < 9
-    df_1['Not Started'] = df_1['Started At Time'].isna()
-
-    # Filter for rows where Scheduled At Time is before 09:00 AM and not started
-    df_filtered = df_1[df_1['Before 09:00 AM'] & df_1['Not Started']]
-
-    st.write("### 🧹 Data Analysis: Scheduled Before 09:00 AM & Not Started")
-    st.dataframe(df_filtered)
-
-    # Bar Chart: Scheduled before 9 AM vs Not Started
-    st.subheader("📊 Bar Chart: Scheduled Before 09:00 AM & Not Started")
-    df_grouped = df_filtered.groupby(['Duty Type', 'Customer', 'Hub']).size().reset_index(name='Count')
-    fig_bar = px.bar(
-        df_grouped, 
-        x='Duty Type', 
-        y='Count', 
-        color='Hub', 
-        title="Not Started Orders Before 09:00 AM",
-        text_auto=True
-    )
-    st.plotly_chart(fig_bar)
-
-    # Table: Customer and Total Vehicle Count
-    st.subheader("📋 Customer-wise Total Vehicle Count")
-    df_1['Total Vehicles'] = pd.to_numeric(df_1['Total Vehicles'], errors='coerce')
-    df_customer_vehicles = df_1.groupby('Customer')['Total Vehicles'].sum().reset_index()
-    st.dataframe(df_customer_vehicles)
-
     # Bar Chart: Customer-wise Total Vehicle Count
     st.subheader("📊 Customer-wise Total Vehicle Count Graph")
+    df_1['Total Vehicles'] = pd.to_numeric(df_1['Total Vehicles'], errors='coerce')
+    df_customer_vehicles = df_1.groupby('Customer')['Total Vehicles'].sum().reset_index()
+    
     fig_customer_bar = px.bar(
         df_customer_vehicles, 
         x='Customer', 
@@ -108,7 +78,6 @@ if df_1 is not None:
         text_auto=True
     )
     st.plotly_chart(fig_customer_bar)
-
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_1}.")
 
@@ -164,6 +133,5 @@ if df_2 is not None:
         st.plotly_chart(fig_spoc_bar)
     else:
         st.warning("⚠️ No 'Spoc' column found in the dataset.")
-
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_2}.")
