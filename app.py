@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import plotly.express as px
 import matplotlib.pyplot as plt
+import matplotlib
 import seaborn as sns
 from dotenv import load_dotenv
 from io import BytesIO
