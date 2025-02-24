@@ -3,7 +3,10 @@ import requests
 import pandas as pd
 import os
 import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
 from dotenv import load_dotenv
+from io import BytesIO
 
 # Load .env file
 load_dotenv()
@@ -47,6 +50,29 @@ def fetch_metabase_data(query_id):
         st.error(f"❌ Error fetching data: {e}")
         return None
 
+# Function to convert DataFrame to PNG
+def dataframe_to_image(df, title="App Not Deployed - Real Time Data"):
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.axis('tight')
+    ax.axis('off')
+
+    # Set the title
+    ax.set_title(title, fontsize=14, fontweight="bold", pad=20)
+
+    # Create the table
+    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+
+    # Adjust the table properties
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.auto_set_column_width([i for i in range(len(df.columns))])
+
+    # Save the figure to a BytesIO object
+    img_buffer = BytesIO()
+    plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
+    img_buffer.seek(0)
+    return img_buffer
+
 # Streamlit UI
 st.title("📊 Metabase Data Viewer & Driver Analysis")
 st.sidebar.header("🔍 Query Settings")
@@ -64,6 +90,17 @@ if df_1 is not None:
     st.write("### 🔹 App Not Deployed - Real Time Data")
     st.dataframe(df_1)
 
+    # Convert DataFrame to PNG
+    img_buffer = dataframe_to_image(df_1)
+
+    # PNG Download Button
+    st.download_button(
+        label="📷 Download Table as PNG",
+        data=img_buffer,
+        file_name="app_not_deployed_real_time_data.png",
+        mime="image/png"
+    )
+
     # Bar Chart: Customer-wise Total Vehicle Count
     st.subheader("📊 Customer-wise count of \"Not App Deployed\" for today")
     df_1['Total Vehicles'] = pd.to_numeric(df_1['Total Vehicles'], errors='coerce')
@@ -80,6 +117,7 @@ if df_1 is not None:
     st.plotly_chart(fig_customer_bar)
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_1}.")
+
 
 ## ------------------- QUERY 2: TRIP DATA -------------------
 if df_2 is not None:
@@ -237,4 +275,3 @@ if df_2 is not None:
 
     else:
         st.warning("⚠️ Required columns ('Customer', 'Driver', 'Spoc', 'Scheduled At') not found in dataset.")
-
