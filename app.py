@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import os
 import plotly.express as px
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from dotenv import load_dotenv
