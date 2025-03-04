@@ -80,10 +80,12 @@ st.sidebar.header("🔍 Query Settings")
 
 # User inputs Query IDs
 query_id_1 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3021, step=1)
+query_id_3 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3036, step=1)
 query_id_2 = st.sidebar.number_input("Enter Metabase Query ID (Second Dataset)", min_value=1, value=3023, step=1)
 
 # Fetch data
 df_1 = fetch_metabase_data(query_id_1)
+df_3 = fetch_metabase_data(query_id_3)
 df_2 = fetch_metabase_data(query_id_2)
 
 ## ------------------- QUERY 1: VEHICLE SCHEDULE DATA -------------------
@@ -98,7 +100,7 @@ if df_1 is not None:
     st.download_button(
         label="📷 Download Table as PNG",
         data=img_buffer,
-        file_name="app_not_deployed_real_time_data.png",
+        file_name="app_not_deployed_real_time_data_1.png",
         mime="image/png"
     )
 
@@ -115,9 +117,43 @@ if df_1 is not None:
         color='Total Vehicles', 
         text_auto=True
     )
-    st.plotly_chart(fig_customer_bar)
+    st.plotly_chart(fig_customer_bar, key="plotly_chart_1")  # ✅ Added unique key
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_1}.")
+
+## ------------------- QUERY 3: VEHICLE SCHEDULE DATA -------------------
+if df_3 is not None:
+    st.write("### 🔹 Accepted Trips - Real Time Data")  # Differentiate title
+    st.dataframe(df_3)
+
+    # Convert DataFrame to PNG
+    img_buffer = dataframe_to_image(df_3)
+
+    # PNG Download Button
+    st.download_button(
+        label="📷 Download Table as PNG",
+        data=img_buffer,
+        file_name="accepted_trips_real_time_data.png",  # Unique filename
+        mime="image/png"
+    )
+
+    # Bar Chart: Customer-wise Total Vehicle Count
+    st.subheader("📊 Customer-wise count of \"Accepted trip\" for today")
+    df_3['Total Vehicles'] = pd.to_numeric(df_3['Total Vehicles'], errors='coerce')  # Corrected reference
+    df_customer_vehicles = df_3.groupby('Customer')['Total Vehicles'].sum().reset_index()  # Corrected reference
+    
+    fig_customer_bar = px.bar(
+        df_customer_vehicles, 
+        x='Customer', 
+        y='Total Vehicles', 
+        title="Total Vehicle Count per Customer", 
+        color='Total Vehicles', 
+        text_auto=True
+    )
+    st.plotly_chart(fig_customer_bar, key="plotly_chart_3")  # ✅ Added unique key
+else:
+    st.warning(f"⚠️ No data found for Query ID {query_id_3}.")
+
 
 
 ## ------------------- QUERY 2: TRIP DATA -------------------
