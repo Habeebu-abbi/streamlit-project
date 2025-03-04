@@ -81,11 +81,13 @@ st.sidebar.header("🔍 Query Settings")
 # User inputs Query IDs
 query_id_1 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3021, step=1)
 query_id_3 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3036, step=1)
+query_id_4 = st.sidebar.number_input("Enter Metabase Query ID (First Dataset)", min_value=1, value=3003, step=1)
 query_id_2 = st.sidebar.number_input("Enter Metabase Query ID (Second Dataset)", min_value=1, value=3023, step=1)
 
 # Fetch data
 df_1 = fetch_metabase_data(query_id_1)
 df_3 = fetch_metabase_data(query_id_3)
+df_4 = fetch_metabase_data(query_id_4)
 df_2 = fetch_metabase_data(query_id_2)
 
 ## ------------------- QUERY 1: VEHICLE SCHEDULE DATA -------------------
@@ -153,6 +155,52 @@ if df_3 is not None:
     st.plotly_chart(fig_customer_bar, key="plotly_chart_3")  # ✅ Added unique key
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_3}.")
+
+
+if df_4 is not None and df_2 is not None:
+    # Convert "Scheduled At" from string to datetime (correct format)
+    df_4["Scheduled At"] = pd.to_datetime(df_4["Scheduled At"], format="%d-%b-%Y", errors="coerce").dt.date
+    df_2["Scheduled At"] = pd.to_datetime(df_2["Scheduled At"], format="%d-%b-%Y", errors="coerce").dt.date
+
+    # Remove NaN values after conversion
+    df_4 = df_4.dropna(subset=["Scheduled At"])
+    df_2 = df_2.dropna(subset=["Scheduled At"])
+
+    # Get the current month and year
+    current_month = pd.Timestamp.today().month
+    current_year = pd.Timestamp.today().year
+
+    # Filter only current month data
+    df_4 = df_4[df_4["Scheduled At"].apply(lambda x: x.month == current_month and x.year == current_year)]
+    df_2 = df_2[df_2["Scheduled At"].apply(lambda x: x.month == current_month and x.year == current_year)]
+
+    # Count vehicles per date
+    deployed_vehicles = df_4.groupby("Scheduled At")["Vehicle"].count().reset_index(name="Deployed Vehicles")
+    non_deployed_vehicles = df_2.groupby("Scheduled At")["Vehicle"].count().reset_index(name="Non-Deployed Vehicles")
+
+    # Merge both counts
+    merged_df = pd.merge(deployed_vehicles, non_deployed_vehicles, on="Scheduled At", how="outer").fillna(0)
+
+    # Calculate App Deployment %
+    merged_df["Total Vehicles"] = merged_df["Deployed Vehicles"] + merged_df["Non-Deployed Vehicles"]
+    merged_df["App Deployment%"] = (merged_df["Deployed Vehicles"] / merged_df["Total Vehicles"]) * 100
+
+    # Calculate the overall average App Deployment%
+    overall_average_deployment = merged_df["App Deployment%"].mean()
+
+    # Convert percentages to integer format and append '%'
+    merged_df["App Deployment%_str"] = merged_df["App Deployment%"].astype(int).astype(str) + "%"
+
+    # Display result in Streamlit
+    st.subheader("📊 App Deployment Analysis")
+    st.dataframe(merged_df[["Scheduled At", "Deployed Vehicles", "Non-Deployed Vehicles", "Total Vehicles", "App Deployment%_str"]])
+
+    # Display overall average separately
+    st.markdown(f"**📊 Overall Average Deployment%:** {int(overall_average_deployment)}%")
+
+    # 🎯 **Updated Bar Chart for Visualization**
+    st.subheader("📊 App Deployment% Over Time")
+    st.bar_chart(merged_df.set_index("Scheduled At")["App Deployment%"])
 
 
 
