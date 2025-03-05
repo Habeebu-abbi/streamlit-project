@@ -156,6 +156,64 @@ if df_3 is not None:
 else:
     st.warning(f"⚠️ No data found for Query ID {query_id_3}.")
 
+# Check if both dataframes exist
+if df_1 is not None and df_3 is not None:
+    # Remove existing "Grand Total" rows from df_1 and df_3
+    df_1["Duty Type"] = df_1["Duty Type"].astype(str)
+    df_3["Duty Type"] = df_3["Duty Type"].astype(str)
+
+    df_1_filtered = df_1[df_1["Duty Type"] != "Grand Total"].copy()
+    df_3_filtered = df_3[df_3["Duty Type"] != "Grand Total"].copy()
+
+
+
+    # Add Status column
+    df_1_filtered["Status"] = "New"
+    df_3_filtered["Status"] = "Accepted"
+
+    # Ensure 'Total Vehicles' is numeric
+    df_1_filtered["Total Vehicles"] = pd.to_numeric(df_1_filtered["Total Vehicles"], errors="coerce")
+    df_3_filtered["Total Vehicles"] = pd.to_numeric(df_3_filtered["Total Vehicles"], errors="coerce")
+
+    # Compute grand total for Total Vehicles
+    total_vehicles_sum = df_1_filtered["Total Vehicles"].sum() + df_3_filtered["Total Vehicles"].sum()
+
+    # Combine DataFrames
+    df_combined = pd.concat([df_1_filtered, df_3_filtered], ignore_index=True)
+
+    # Create a single Grand Total row at the bottom (without unnecessary columns)
+    grand_total_row = pd.DataFrame({
+        "Duty Type": [""],  
+        "Customer": [""],
+        "Hub": [""],
+        "Spocs": [""],
+        "Driver": [""],
+        "Scheduled At Time": [""],
+        "Started At Time": [""],
+        "Total Vehicles": [total_vehicles_sum],  # Only keeping total sum
+        "Status": [""]
+    })
+
+    # Append only one Grand Total row at the end
+    df_combined = pd.concat([df_combined, grand_total_row], ignore_index=True)
+
+    # Ensure that there are no duplicate or misplaced Grand Total rows
+    df_combined = df_combined[~df_combined["Customer"].str.contains("Grand Total", na=False)]
+
+    # Display the cleaned-up DataFrame
+    st.write("### 🔹 Combined Vehicle Schedule Data")
+    st.dataframe(df_combined)
+
+    # Convert DataFrame to PNG
+    img_buffer = dataframe_to_image(df_combined)
+
+    # PNG Download Button
+    st.download_button(
+        label="📷 Download Table as PNG",
+        data=img_buffer,
+        file_name="combined_vehicle_schedule_data.png",
+        mime="image/png"
+    )
 
 if df_4 is not None and df_2 is not None:
     # Convert "Scheduled At" from string to datetime (correct format)
