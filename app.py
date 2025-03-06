@@ -165,8 +165,6 @@ if df_1 is not None and df_3 is not None:
     df_1_filtered = df_1[df_1["Duty Type"] != "Grand Total"].copy()
     df_3_filtered = df_3[df_3["Duty Type"] != "Grand Total"].copy()
 
-
-
     # Add Status column
     df_1_filtered["Status"] = "New"
     df_3_filtered["Status"] = "Accepted"
@@ -255,8 +253,12 @@ if df_4 is not None and df_2 is not None:
 
     # Display overall average separately
     st.markdown(f"**📊 Overall Average Deployment%:** {int(overall_average_deployment)}%")
+    
+    # Convert 'Scheduled At' to the desired format
+    merged_df["Scheduled At"] = pd.to_datetime(merged_df["Scheduled At"]).dt.strftime("%d %B")
 
-    # 🎯 **Updated Bar Chart for Visualization**
+
+    # Set the formatted column as the index and plot the bar chart
     st.subheader("📊 App Deployment% Over Time")
     st.bar_chart(merged_df.set_index("Scheduled At")["App Deployment%"])
 
